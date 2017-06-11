@@ -188,6 +188,7 @@ public class DefaultGradleLauncher implements GradleLauncher {
         // TODO: Build operations for these composite related things?
         if (!isNestedBuild()) {
             IncludedBuildControllers buildControllers = gradle.getServices().get(IncludedBuildControllers.class);
+            buildControllers.populateTaskGraphs();
             buildControllers.startTaskExecution();
         }
 
