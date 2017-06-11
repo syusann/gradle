@@ -26,6 +26,10 @@ import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.concurrent.ExecutorFactory;
 import org.gradle.internal.concurrent.ManagedExecutor;
 import org.gradle.internal.concurrent.Stoppable;
+import org.gradle.internal.operations.BuildOperationContext;
+import org.gradle.internal.operations.BuildOperationExecutor;
+import org.gradle.internal.operations.RunnableBuildOperation;
+import org.gradle.internal.progress.BuildOperationDescriptor;
 
 import java.util.Map;
 
@@ -33,11 +37,14 @@ class DefaultIncludedBuildControllers implements Stoppable, IncludedBuildControl
     private final Map<BuildIdentifier, IncludedBuildController> buildControllers = Maps.newHashMap();
     private final ManagedExecutor executorService;
     private final IncludedBuilds includedBuilds;
+    private final BuildOperationExecutor buildOperationExecutor;
     private boolean taskExecutionStarted;
 
-    DefaultIncludedBuildControllers(ExecutorFactory executorFactory, IncludedBuilds includedBuilds) {
+    DefaultIncludedBuildControllers(ExecutorFactory executorFactory, IncludedBuilds includedBuilds, BuildOperationExecutor buildOperationExecutor) {
         this.includedBuilds = includedBuilds;
         this.executorService = executorFactory.create("included builds");
+
+        this.buildOperationExecutor = buildOperationExecutor;
     }
 
     public IncludedBuildController getBuildController(BuildIdentifier buildId) {
@@ -46,10 +53,31 @@ class DefaultIncludedBuildControllers implements Stoppable, IncludedBuildControl
             return buildController;
         }
 
-        IncludedBuild build = includedBuilds.getBuild(buildId.getName());
-        DefaultIncludedBuildController newBuildController = new DefaultIncludedBuildController(build);
+        final IncludedBuild build = includedBuilds.getBuild(buildId.getName());
+        final DefaultIncludedBuildController newBuildController = new DefaultIncludedBuildController(build);
         buildControllers.put(buildId, newBuildController);
         executorService.submit(newBuildController);
+
+/*
+        final RunnableBuildOperation operation = new RunnableBuildOperation() {
+             @Override
+             public void run(BuildOperationContext context) {
+                 newBuildController.run();
+             }
+
+             @Override
+             public BuildOperationDescriptor.Builder description() {
+                 return BuildOperationDescriptor.displayName("Run tasks for build: " + build.getName());
+             }
+         };
+
+         new Thread() {
+             @Override
+             public void run() {
+                 buildOperationExecutor.run(operation);
+             }
+         }.start();
+*/
 
         // Required for build controllers created after initial start
         if (taskExecutionStarted) {
