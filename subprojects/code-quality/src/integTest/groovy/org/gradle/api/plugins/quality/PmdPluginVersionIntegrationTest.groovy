@@ -199,6 +199,31 @@ class PmdPluginVersionIntegrationTest extends AbstractPmdPluginVersionIntegratio
         output.contains "\tEnsure you override both equals() and hashCode()"
     }
 
+    def "check task should not be up-to-date after clean if it only outputs to console"() {
+        given:
+        badCode()
+        buildFile << """
+            pmd {
+                consoleOutput = true
+                ignoreFailures = true
+            }
+            tasks.withType(Pmd) {
+                reports {
+                    html.enabled false
+                    xml.enabled false
+                }
+            }
+        """
+
+        when:
+        succeeds('check')
+        succeeds('clean', 'check')
+
+        then:
+        nonSkippedTasks.contains(':pmdMain')
+        output.contains("PMD rule violations were found")
+    }
+
     private static Matcher<String> containsClass(String className) {
         containsLine(containsString(className.replace(".", File.separator)))
     }

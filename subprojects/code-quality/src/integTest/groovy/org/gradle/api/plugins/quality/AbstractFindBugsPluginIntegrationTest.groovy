@@ -531,6 +531,31 @@ abstract class AbstractFindBugsPluginIntegrationTest extends AbstractIntegration
         !result.error.contains("Wrong magic bytes")
     }
 
+    def "check task should not be up-to-date after clean if it only outputs to console"() {
+        given:
+        badCode()
+        buildFile << """
+            findbugs {
+                ignoreFailures true
+            }
+            tasks.withType(FindBugs) {
+                reports {
+                    html.enabled false
+                    xml.enabled false
+                    text.enabled false
+                }
+            }
+        """
+
+        when:
+        succeeds('check')
+        succeeds('clean', 'check')
+
+        then:
+        nonSkippedTasks.contains(':findbugsMain')
+        output.contains("Analyzing classes")
+    }
+
     private static boolean containsXmlMessages(File xmlReportFile) {
         new XmlSlurper().parseText(xmlReportFile.text).BugInstance.children().collect { it.name() }.containsAll(['ShortMessage', 'LongMessage'])
     }
